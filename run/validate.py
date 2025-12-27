@@ -80,7 +80,7 @@ def main():
         logger.info('=> load model state {}'.format(test_model_file))
         model.load_state_dict(torch.load(test_model_file))
     else:
-        raise ValueError('check model file for testing!')
+        raise ValueError(f'check model file for testing! {test_model_file}')
 
     print("=> validating...")
     model.eval()
