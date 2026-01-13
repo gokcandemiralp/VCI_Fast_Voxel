@@ -44,10 +44,18 @@ def extract_extrinsics_panoptic(cameras_list):
     return np.stack(extrinsics, axis=0)
 
 def extract_camera_matrices_panoptic(cameras_list):
-    rotation_list = [cam['R'] for cam in cameras_list]
-    rotation_array = np.array(rotation_list)
-    
-    return rotation_array
+    intrinsic_matrices = []
+
+    for cam in cameras_list:
+        K = np.array([
+            [cam['fx'], 0,         cam['cx']],
+            [0,         cam['fy'], cam['cy']],
+            [0,         0,         1        ]
+        ], dtype=np.float64)
+        
+        intrinsic_matrices.append(K)
+
+    return np.array(intrinsic_matrices)
 
 def extract_distortion_coefficients_panoptic(cameras_list):
     dist_coeffs = []
@@ -81,14 +89,14 @@ def m_to_mm(extrinsic_matrices):
 
     return np.array(mm_list)
 
-def invert_extrinsics(extrinsic_matrices):
+def invert_position(extrinsic_matrices):
     n = extrinsic_matrices.shape[0]
     inverted_list = []
 
     for i in range(n):
         M = extrinsic_matrices[i]
         R = M[:3, :3]
-        t = M[:3, 3] * 1000
+        t = M[:3, 3]
 
         # Calculate inverse
         R_inv = R.T
@@ -96,7 +104,7 @@ def invert_extrinsics(extrinsic_matrices):
 
         # Reconstruct
         M_inv = np.eye(4)
-        M_inv[:3, :3] = R_inv
+        M_inv[:3, :3] = R
         M_inv[:3, 3] = t_inv
         
         inverted_list.append(M_inv)

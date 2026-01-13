@@ -61,19 +61,19 @@ TEST:
 
 CAPTURE_SPEC:
   SPACE_SIZE:
-    - 8000.0
-    - 8000.0
+    - 4000.0
+    - 4000.0
     - 2000.0
   SPACE_CENTER:
-    - 200.0
-    - 2700.0
-    - 450.0
+    - 0.0
+    - 0.0
+    - 800.0
   VOXELS_PER_AXIS:
-    - 80
-    - 80
+    - 40
+    - 40
     - 20
-  MAX_PEOPLE: 1
-  MIN_SCORE: 0.01
+  MAX_PEOPLE: 2
+  MIN_SCORE: 0.3
   
 INDIVIDUAL_SPEC:
   SPACE_SIZE:
