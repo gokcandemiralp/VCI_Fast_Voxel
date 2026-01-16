@@ -102,7 +102,7 @@ class ProjectLayer(nn.Module):
 
         curr_seq = meta['seq'][index]
         if curr_seq not in self.sample_grid:
-            print("=> save the sampling grid in JLN for sequence", curr_seq)
+            # print("=> save the sampling grid in JLN for sequence", curr_seq)
             self.compute_sample_grid(heatmaps, meta, index, self.fine_voxels_per_axis, curr_seq, cameras, resize_transform)
 
         # compute the index of the top left point in the fine-grained volume
