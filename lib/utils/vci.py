@@ -138,12 +138,13 @@ def save_rendered_view(image_array, output_dir, filename):
     success = cv2.imwrite(save_path, image_array)
     return success
 
-def rescale_image(image, target_size):
+def rescale_image(image, target_size, is_mask=False):
     # target_size[0] is Width, target_size[1] is Height
     width = int(target_size[0])
     height = int(target_size[1])
-    
-    return cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
+
+    interp = cv2.INTER_NEAREST if is_mask else cv2.INTER_LINEAR
+    return cv2.resize(image, (width, height), interpolation=interp)
 
 def show_video(frames, interval=200, save_path="video.gif", resize_ratio=None):
     print(f"Frame count: {len(frames)}")
