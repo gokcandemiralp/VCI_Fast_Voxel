@@ -7,6 +7,9 @@ import matplotlib.animation as animation
 import torchvision
 import cv2
 import os
+import json
+import re
+
 from IPython.display import HTML
 matplotlib.use('Agg')
 matplotlib.rcParams['animation.embed_limit'] = 200.0
@@ -55,7 +58,7 @@ def load_model(config, backbone_file, model_file):
     
     return backbone, model
 
-def render_image_with_poses(config, images, poses, meta, cameras, resize_transform, view_idx = 0):
+def render_image_with_poses(config, images, poses, meta, cameras, resize_transform, view_idx=0, show_joint_ids=False):
     batch_size, num_views, _, height, width = images.shape
     max_people = poses.shape[1]
     num_joints = poses.shape[2]
@@ -106,8 +109,38 @@ def render_image_with_poses(config, images, poses, meta, cameras, resize_transfo
                         cx, cy = child[0], i * height + child[1]
                         cv2.line(ndarr, (int(px), int(py)), (int(cx), int(cy)), color, 4)
 
+                # Draw Joint IDs
+                for j in range(num_joints):
+                    if is_valid_coord(pose_2d[j], width, height):
+                        xc = pose_2d[j][0]
+                        yc = i * height + pose_2d[j][1]
+
+                        if show_joint_ids:
+                            # Offset text slightly to not cover the exact center
+                            text_pos = (int(xc) + 4, int(yc) - 4) 
+                            cv2.putText(
+                                ndarr, 
+                                str(j), 
+                                text_pos, 
+                                cv2.FONT_HERSHEY_SIMPLEX, 
+                                0.5,             # Font scale
+                                (255, 255, 255), # White text
+                                3,               # Thickness
+                                cv2.LINE_AA
+                            )
+                            cv2.putText(
+                                ndarr, 
+                                str(j), 
+                                text_pos, 
+                                cv2.FONT_HERSHEY_SIMPLEX, 
+                                0.5,             # Font scale
+                                (5, 5, 155),     # Red text
+                                1,               # Thickness
+                                cv2.LINE_AA
+                            )
+
     if ndarr is not None:
-                ndarr = cv2.cvtColor(ndarr, cv2.COLOR_BGR2RGB)
+        ndarr = cv2.cvtColor(ndarr, cv2.COLOR_BGR2RGB)
                 
     return ndarr
     
@@ -184,3 +217,48 @@ def show_video(frames, interval=200, save_path="video.gif", resize_ratio=None):
 
     plt.close(fig)
     return HTML(ani.to_jshtml())
+
+def save_predictions_to_json(poses, output_path, config):
+    output_data = {}
+    poses = poses.cpu()
+    
+    batch_size = poses.shape[0]
+    num_joints = poses.shape[2]
+
+    for frame_idx in range(batch_size):
+        frame_key = str(frame_idx)
+        output_data[frame_key] = {}
+        person_idx = 0 
+        
+        score = poses[frame_idx, person_idx, 0, 4].item()
+        
+        if score >= config.CAPTURE_SPEC.MIN_SCORE:
+            for joint_idx in range(num_joints):
+                x = poses[frame_idx, person_idx, joint_idx, 0].item()
+                y = poses[frame_idx, person_idx, joint_idx, 1].item()
+                z = poses[frame_idx, person_idx, joint_idx, 2].item()
+                
+                output_data[frame_key][str(joint_idx)] = [x, y, z]
+        else:
+            print(f"Frame {frame_idx}: Person 0 score ({score:.4f}) is below threshold.")
+
+
+    json_str = json.dumps(output_data, indent=4)
+    def compact_coordinates(match):
+        # Extract the inner content (e.g., "-0.1, \n -0.8, \n -0.3")
+        content = match.group(1)
+        # Remove all whitespace and newlines, then reconstruct with just commas
+        # This results in: "-0.1,-0.8,-0.3"
+        compact_content = ",".join(val.strip() for val in content.split(','))
+        return f"[{compact_content}]"
+
+    # Apply the regex substitution
+    json_str = re.sub(r'\[\s*([-\d.,\seE]+?)\s*\]', compact_coordinates, json_str)
+
+    # 4. Write the processed string to file
+    try:
+        with open(output_path, 'w') as f:
+            f.write(json_str)
+        print(f"Successfully saved predictions to {output_path}")
+    except IOError as e:
+        print(f"Error saving JSON file: {e}")
